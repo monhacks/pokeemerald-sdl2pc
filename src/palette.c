@@ -119,7 +119,10 @@ u8 UpdatePaletteFade(void)
     u8 dummy = 0;
 
     if (sPlttBufferTransferPending)
-        return PALETTE_FADE_STATUS_LOADING;
+    {
+        //return PALETTE_FADE_STATUS_LOADING;
+        return 0;
+    }
 
     if (gPaletteFade.mode == NORMAL_FADE)
         result = UpdateNormalPaletteFade();

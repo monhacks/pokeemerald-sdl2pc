@@ -30,6 +30,8 @@ struct MusicPlayerTrack gMPlayTrack_SE2[9];
 struct MusicPlayerTrack gMPlayTrack_SE3[1];
 u8 gMPlayMemAccArea[0x10];
 
+/*
+
 void MP2K_event_nxx();
 void MP2KPlayerMain();
 
@@ -960,7 +962,7 @@ void CgbSound(void)
         if (!(channels->statusFlags & SOUND_CHANNEL_SF_ON))
             continue;
 
-        /* 1. determine hardware channel registers */
+        /* 1. determine hardware channel registers *//*
         switch (ch)
         {
         case 1:
@@ -996,7 +998,7 @@ void CgbSound(void)
         prevC15 = soundInfo->c15;
         envelopeStepTimeAndDir = *nrx2ptr;
 
-        /* 2. calculate envelope volume */
+        /* 2. calculate envelope volume *//*
         if (channels->statusFlags & SOUND_CHANNEL_SF_START)
         {
             if (!(channels->statusFlags & SOUND_CHANNEL_SF_STOP))
@@ -1202,7 +1204,7 @@ void CgbSound(void)
         }
 
     envelope_complete:
-        /* 3. apply pitch to HW registers */
+        /* 3. apply pitch to HW registers *//*
         if (channels->modify & CGB_CHANNEL_MO_PIT)
         {
             if (ch < 4 && (channels->type & TONEDATA_TYPE_FIX))
@@ -1223,7 +1225,7 @@ void CgbSound(void)
             *nrx4ptr = (s8)(channels->n4 & mask);
         }
 
-        /* 4. apply envelope & volume to HW registers */
+        /* 4. apply envelope & volume to HW registers *//*
         if (channels->modify & CGB_CHANNEL_MO_VOL)
         {
             REG_NR51 = (REG_NR51 & ~channels->panMask) | channels->pan;
@@ -1805,3 +1807,4 @@ void SetPokemonCryPriority(u8 val)
 {
     gPokemonCrySong.priority = val;
 }
+*/

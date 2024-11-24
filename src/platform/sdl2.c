@@ -2,6 +2,9 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <time.h>
+#include <stdlib.h>
+#include <gccore.h>
+#include <wiiuse/wpad.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -9,6 +12,7 @@
 #endif
 
 #include <SDL2/SDL.h>
+//#include "fgdxhdfghdfh.h"
 
 #define NO_UNDERSCORE_HACK
 
@@ -104,6 +108,66 @@ static void CloseSaveFile(void);
 static void UpdateInternalClock(void);
 static void RunDMAs(u32 type);
 
+static void *xfb = NULL;
+static GXRModeObj *rmode = NULL;
+
+void initconscreen()
+{
+    // Initialise the video system
+	VIDEO_Init();
+
+	// This function initialises the attached controllers
+	WPAD_Init();
+
+	// Obtain the preferred video mode from the system
+	// This will correspond to the settings in the Wii menu
+	rmode = VIDEO_GetPreferredMode(NULL);
+
+	// Allocate memory for the display in the uncached region
+	xfb = MEM_K0_TO_K1(SYS_AllocateFramebuffer(rmode));
+    
+	// Initialise the console, required for printf
+	console_init(xfb,20,20,rmode->fbWidth,rmode->xfbHeight,rmode->fbWidth*VI_DISPLAY_PIX_SZ);
+
+	// Set up the video registers with the chosen mode
+	VIDEO_Configure(rmode);
+
+	// Tell the video hardware where our display memory is
+	VIDEO_SetNextFramebuffer(xfb);
+
+	// Make the display visible
+	VIDEO_SetBlack(false);
+
+	// Flush the video register changes to the hardware
+	VIDEO_Flush();
+
+	// Wait for Video setup to complete
+	VIDEO_WaitVSync();
+	if(rmode->viTVMode&VI_NON_INTERLACE) VIDEO_WaitVSync();
+}
+
+#define useDraw
+
+// Key mappings
+#define KEY_A_BUTTON      (uint16_t)1
+#define KEY_B_BUTTON      (uint16_t)1 << 1
+#define KEY_START_BUTTON  (uint16_t)1 << 3
+#define KEY_SELECT_BUTTON (uint16_t)1 << 3
+#define KEY_L_BUTTON      (uint16_t)1 << 4
+#define KEY_R_BUTTON      (uint16_t)1 << 5
+#define KEY_DPAD_UP       (uint16_t)1 << 6
+#define KEY_DPAD_DOWN     (uint16_t)1 << 7
+#define KEY_DPAD_LEFT     (uint16_t)1 << 4
+#define KEY_DPAD_RIGHT    (uint16_t)1 << 5
+
+#define HANDLE_KEYUP(key) \
+case KEY_##key:  keys &= ~key; break;
+
+#define HANDLE_KEYDOWN(key) \
+case KEY_##key:  keys |= key; break;
+
+static u16 keys;
+
 int main(int argc, char **argv)
 {
     // Open an output console on Windows
@@ -113,14 +177,60 @@ int main(int argc, char **argv)
     freopen( "CON", "w", stdout ) ;
 #endif
 
-    ReadSaveFile("pokeemerald.sav");
+	// Initialise the video system
+	VIDEO_Init();
 
+	// This function initialises the attached controllers
+	WPAD_Init();
+
+	// Obtain the preferred video mode from the system
+	// This will correspond to the settings in the Wii menu
+	rmode = VIDEO_GetPreferredMode(NULL);
+
+	// Allocate memory for the display in the uncached region
+	xfb = MEM_K0_TO_K1(SYS_AllocateFramebuffer(rmode));
+    
+	// Initialise the console, required for printf
+	console_init(xfb,20,20,rmode->fbWidth,rmode->xfbHeight,rmode->fbWidth*VI_DISPLAY_PIX_SZ);
+
+	// Set up the video registers with the chosen mode
+	VIDEO_Configure(rmode);
+
+	// Tell the video hardware where our display memory is
+	VIDEO_SetNextFramebuffer(xfb);
+
+	// Make the display visible
+	VIDEO_SetBlack(false);
+
+	// Flush the video register changes to the hardware
+	VIDEO_Flush();
+
+	// Wait for Video setup to complete
+	VIDEO_WaitVSync();
+	if(rmode->viTVMode&VI_NON_INTERLACE) VIDEO_WaitVSync();
+    
+    
+    for(int i = 0; i < 5; i++)
+    {
+        printf("hello emerald world!\n");
+    }
+
+    //*(int*)0 = 1;
+    
+    fatInitDefault();
+
+    ReadSaveFile("pokeemerald.sav");
+    #ifdef useDraw
     if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0)
+    #else
+    if(SDL_Init(SDL_INIT_AUDIO) < 0)
+    #endif
     {
         fprintf(stderr, "SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
         return 1;
     }
 
+    #ifdef useDraw
     sdlWindow = SDL_CreateWindow("pokeemerald", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, DISPLAY_WIDTH * videoScale, DISPLAY_HEIGHT * videoScale, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     if (sdlWindow == NULL)
     {
@@ -149,6 +259,9 @@ int main(int argc, char **argv)
         fprintf(stderr, "Texture could not be created! SDL_Error: %s\n", SDL_GetError());
         return 1;
     }
+    #endif
+    
+    SDL_SetWindowSize(sdlWindow, DISPLAY_WIDTH * 2, DISPLAY_HEIGHT * 2);
 
     simTime = curGameTime = lastGameTime = SDL_GetPerformanceCounter();
 
@@ -178,6 +291,11 @@ int main(int argc, char **argv)
     mainLoopThread = SDL_CreateThread(DoMain, "AgbMain", NULL);
 
     double accumulator = 0.0;
+    
+    //for (int i = 0; i < 60; i++)
+    //{
+    //    VIDEO_WaitVSync();
+    //}
 
     memset(&internalClock, 0, sizeof(internalClock));
     internalClock.status = SIIRTCINFO_24HOUR;
@@ -186,21 +304,71 @@ int main(int argc, char **argv)
     while (isRunning)
     {
         ProcessEvents();
+        
+        u32 pressed = WPAD_ButtonsDown(0);
+
+        // awful
+        if ( pressed & WPAD_BUTTON_HOME ) exit(0);
+
+        if ( pressed & WPAD_BUTTON_1) 
+            keys |= KEY_A_BUTTON;
+        
+        if ( pressed & WPAD_BUTTON_2) 
+            keys |= KEY_B_BUTTON;
+        
+        if ( pressed & WPAD_BUTTON_UP) 
+            keys |= KEY_DPAD_UP;
+        
+        if ( pressed & WPAD_BUTTON_DOWN) 
+            keys |= KEY_DPAD_DOWN;
+        
+        if ( pressed & WPAD_BUTTON_LEFT) 
+            keys |= KEY_DPAD_RIGHT;
+        
+        if ( pressed & WPAD_BUTTON_RIGHT) 
+            keys |= KEY_DPAD_LEFT;
+        
+        if ( pressed & WPAD_BUTTON_PLUS) 
+            keys |= KEY_START_BUTTON;
+
+        u32 unpressed = WPAD_ButtonsUp(0);
+        
+        if ( unpressed & WPAD_BUTTON_1) 
+            keys &= ~KEY_A_BUTTON;
+        
+        if ( unpressed & WPAD_BUTTON_2) 
+            keys &= ~KEY_B_BUTTON;
+        
+        if ( unpressed & WPAD_BUTTON_UP) 
+            keys &= ~KEY_DPAD_UP;
+        
+        if ( unpressed & WPAD_BUTTON_DOWN) 
+            keys &= ~KEY_DPAD_DOWN;
+        
+        if ( unpressed & WPAD_BUTTON_LEFT) 
+            keys &= ~KEY_DPAD_RIGHT;
+        
+        if ( unpressed & WPAD_BUTTON_RIGHT) 
+            keys &= ~KEY_DPAD_LEFT;
+        
+        if ( unpressed & WPAD_BUTTON_PLUS) 
+            keys &= ~KEY_START_BUTTON;
 
         if (!paused)
         {
-            double dt = fixedTimestep / timeScale; // TODO: Fix speedup
+            //double dt = fixedTimestep / timeScale; // TODO: Fix speedup
 
-            curGameTime = SDL_GetPerformanceCounter();
-            double deltaTime = (double)((curGameTime - lastGameTime) / (double)SDL_GetPerformanceFrequency());
-            if (deltaTime > (dt * 5))
-                deltaTime = dt;
-            lastGameTime = curGameTime;
+            //curGameTime = SDL_GetPerformanceCounter();
+            //double deltaTime = (double)((curGameTime - lastGameTime) / (double)SDL_GetPerformanceFrequency());
+            //if (deltaTime > (dt * 5))
+            //    deltaTime = dt;
+            //lastGameTime = curGameTime;
 
-            accumulator += deltaTime;
+            //accumulator += deltaTime;
+            //VIDEO_WaitVSync();
 
-            while (accumulator >= dt)
-            {
+            //while (accumulator >= dt)
+            //{
                 if (SDL_AtomicGet(&isFrameAvailable))
                 {
                     VDraw(sdlTexture);
@@ -218,9 +386,9 @@ int main(int argc, char **argv)
 
                     SDL_SemPost(vBlankSemaphore);
 
-                    accumulator -= dt;
+                    //accumulator -= dt;
                 }
-            }
+            //}
         }
 
         if (videoScaleChanged)
@@ -288,25 +456,6 @@ static void CloseSaveFile()
     }
 }
 
-// Key mappings
-#define KEY_A_BUTTON      SDLK_z
-#define KEY_B_BUTTON      SDLK_x
-#define KEY_START_BUTTON  SDLK_RETURN
-#define KEY_SELECT_BUTTON SDLK_BACKSLASH
-#define KEY_L_BUTTON      SDLK_a
-#define KEY_R_BUTTON      SDLK_s
-#define KEY_DPAD_UP       SDLK_UP
-#define KEY_DPAD_DOWN     SDLK_DOWN
-#define KEY_DPAD_LEFT     SDLK_LEFT
-#define KEY_DPAD_RIGHT    SDLK_RIGHT
-
-#define HANDLE_KEYUP(key) \
-case KEY_##key:  keys &= ~key; break;
-
-#define HANDLE_KEYDOWN(key) \
-case KEY_##key:  keys |= key; break;
-
-static u16 keys;
 
 void ProcessEvents(void)
 {
@@ -319,7 +468,7 @@ void ProcessEvents(void)
         case SDL_QUIT:
             isRunning = false;
             break;
-        case SDL_KEYUP:
+        /*case SDL_KEYUP:
             switch (event.key.keysym.sym)
             {
             HANDLE_KEYUP(A_BUTTON)
@@ -378,7 +527,7 @@ void ProcessEvents(void)
                 break;
             }
             break;
-        case SDL_WINDOWEVENT:
+        */case SDL_WINDOWEVENT:
             if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
             {
                 unsigned int w = event.window.data1;
@@ -698,13 +847,106 @@ void CpuFastSet(const void *src, void *dst, u32 cnt)
     }
 }
 
-void LZ77UnCompVram(const u32 *src_, void *dest_)
+/*void LZ77UnCompVram(const u32 *src_, void *dest_)
+{
+
+
+  u32 source = src_;
+  u32 dest = dest_;
+
+  u32 header = __builtin_bswap32(CPUReadMemory(source));
+  source += 4;
+
+  if(((source & 0xe000000) == 0) ||
+     ((source + ((header >> 8) & 0x1fffff)) & 0xe000000) == 0)
+    return;
+
+  int byteCount = 0;
+  int byteShift = 0;
+  u32 writeValue = 0;
+
+  int len = header >> 8;
+
+  while(len > 0) {
+    u8 d = CPUReadByte(source++);
+
+    if(d) {
+      for(int i = 0; i < 8; i++) {
+        if(d & 0x80) {
+          u16 data = CPUReadByte(source++) << 8;
+          data |= CPUReadByte(source++);
+          int length = (data >> 12) + 3;
+          int offset = (data & 0x0FFF);
+          u32 windowOffset = dest + byteCount - offset - 1;
+          for(int i2 = 0; i2 < length; i2++) {
+            writeValue |= (CPUReadByte(windowOffset++) << byteShift);
+            byteShift += 8;
+            byteCount++;
+
+            if(byteCount == 2) {
+              CPUWriteHalfWord(dest, writeValue);
+              dest += 2;
+              byteCount = 0;
+              byteShift = 0;
+              writeValue = 0;
+            }
+            len--;
+            if(len == 0)
+              return;
+          }
+        } else {
+          writeValue |= (CPUReadByte(source++) << byteShift);
+          byteShift += 8;
+          byteCount++;
+          if(byteCount == 2) {
+            CPUWriteHalfWord(dest, writeValue);
+            dest += 2;
+            byteCount = 0;
+            byteShift = 0;
+            writeValue = 0;
+          }
+          len--;
+          if(len == 0)
+            return;
+        }
+        d <<= 1;
+      }
+    } else {
+      for(int i = 0; i < 8; i++) {
+        writeValue |= (CPUReadByte(source++) << byteShift);
+        byteShift += 8;
+        byteCount++;
+        if(byteCount == 2) {
+          CPUWriteHalfWord(dest, writeValue);
+          dest += 2;
+          byteShift = 0;
+          byteCount = 0;
+          writeValue = 0;
+        }
+        len--;
+        if(len == 0)
+          return;
+      }
+    }
+  }
+}*/
+/*void LZ77UnCompVram(const u32 *src_, void *dest_)
 {
     const u8 *src = src_;
     u8 *dest = dest_;
-    int destSize = (src[3] << 16) | (src[2] << 8) | src[1];
+    int destSize = (src[0] << 16) | (src[1] << 8) | src[2];
     int srcPos = 4;
     int destPos = 0;
+    
+    printf("dest size = %u\n", destSize);
+    
+    printf("dumping bytes\n");
+    for (int i = 0; i < 15; i++)
+    {
+        printf("byte %u = %x\n", i, src[i]);
+    }
+    
+    for(;;){}
 
     for (;;) {
         unsigned char flags = src[srcPos++];
@@ -713,6 +955,11 @@ void LZ77UnCompVram(const u32 *src_, void *dest_)
             if (flags & 0x80) {
                 int blockSize = (src[srcPos] >> 4) + 3;
                 int blockDistance = (((src[srcPos] & 0xF) << 8) | src[srcPos + 1]) + 1;
+                printf("blockDistance size = %u\n", blockDistance);
+                printf("p0 = %u ANDED %u\n", src[srcPos], src[srcPos] & 0xF);
+                printf("p1 = %u ANDED %u\n", src[srcPos + 1], src[srcPos+1] & 0xF);
+                printf("p2 = %u ANDED %u\n", src[srcPos + 2], src[srcPos+2] & 0xF);
+                printf("p3 = %u ANDED %u\n", src[srcPos + 3], src[srcPos+3] & 0xF);
 
                 srcPos += 2;
 
@@ -747,17 +994,104 @@ void LZ77UnCompVram(const u32 *src_, void *dest_)
 
 fail:
     puts("Fatal error while decompressing LZ file.\n");
+}*/
+
+void LZ77UnCompVram(const u32 *src_, void *dest_)
+{
+    u8 *src;
+    const u8 *src2 = src_;
+    u8 *dest = dest_;
+    int destSize = (src2[0] << 16) | (src2[1] << 8) | src2[2];
+    int srcPos = 4;
+    int destPos = 0;
+    
+    //printf("dest size = %u\n", destSize);
+    
+    src = malloc(destSize);
+    if (src == NULL)
+    {
+        printf("out of memory!\n");
+        return;
+    }
+    
+    for (int i = 0; i < (destSize / 4); i++)
+    {
+        ((u32*)src)[i] = __builtin_bswap32(src_[i]);
+    }
+
+    for (;;) {
+        unsigned char flags = src[srcPos++];
+
+        for (int i = 0; i < 8; i++) {
+            if (flags & 0x80) {
+                int blockSize = (src[srcPos] >> 4) + 3;
+                int blockDistance = (((src[srcPos] & 0xF) << 8) | src[srcPos + 1]) + 1;
+                //printf("blockDistance size = %u\n", blockDistance);
+
+                srcPos += 2;
+
+                int blockPos = destPos - blockDistance;
+
+                // Some Ruby/Sapphire tilesets overflow.
+                if (destPos + blockSize > destSize) {
+                    blockSize = destSize - destPos;
+                    //fprintf(stderr, "Destination buffer overflow.\n");
+                    puts("Destination buffer overflow.\n");
+                }
+
+                if (blockPos < 0)
+                    goto fail;
+
+                for (int j = 0; j < blockSize; j++)
+                    dest[destPos++] = dest[blockPos + j];
+            } else {
+                if (destPos >= destSize)
+                    goto fail;
+
+                dest[destPos++] = src[srcPos++];
+            }
+
+            if (destPos == destSize) {
+                free(src);
+                return;
+            }
+
+            flags <<= 1;
+        }
+    }
+
+fail:
+    free(src);
+    puts("Fatal error while decompressing LZ file.\n");
 }
 
 void LZ77UnCompWram(const u32 *src, void *dst)
 {
-    const uint8_t *source = src;
+    //uint8_t endianswap[16384];
+    uint8_t *source = src;
+    uint8_t *alloc;
     uint8_t *dest = dst;
 
     uint32_t header = CPUReadMemory(source);
-    source += 4;
 
     int len = header >> 8;
+    
+    //printf("sprite compressed size = %u\n", len);
+    
+    alloc = malloc(len);
+    if (alloc == NULL)
+    {
+        printf("out of memory!\n");
+        return;
+    }
+    source = alloc;
+
+    for (int i = 0; i < (len / 4); i++)
+    {
+        ((u32*)source)[i] = __builtin_bswap32(src[i]);
+    }
+    
+    source += 4;
 
     while (len > 0) {
         uint8_t d = CPUReadByte(source++);
@@ -774,13 +1108,19 @@ void LZ77UnCompWram(const u32 *src, void *dst)
                         CPUWriteByte(dest++, CPUReadByte(windowOffset++));
                         len--;
                         if (len == 0)
+                        {
+                            free(alloc);
                             return;
+                        }
                     }
                 } else {
                     CPUWriteByte(dest++, CPUReadByte(source++));
                     len--;
                     if (len == 0)
+                    {
+                        free(alloc);
                         return;
+                    }
                 }
                 d <<= 1;
             }
@@ -789,10 +1129,14 @@ void LZ77UnCompWram(const u32 *src, void *dst)
                 CPUWriteByte(dest++, CPUReadByte(source++));
                 len--;
                 if (len == 0)
+                {
+                    free(alloc);
                     return;
+                }
             }
         }
     }
+    free(alloc);
 }
 
 void RLUnCompWram(const void *src, void *dest)
@@ -1024,6 +1368,11 @@ static void RenderBGScanline(int bgNum, uint16_t control, uint16_t hoffs, uint16
     unsigned int mapHeight = bgMapSizes[control >> 14][1];
     unsigned int mapWidthInPixels = mapWidth * 8;
     unsigned int mapHeightInPixels = mapHeight * 8;
+    
+    //if (bgNum == 0 && lineNum == 100)
+    //{
+    //    printf("screenBaseBlock = %u", screenBaseBlock);
+    //}
 
     uint8_t *bgtiles = (uint8_t *)BG_CHAR_ADDR(charBaseBlock);
     uint16_t *pal = (uint16_t *)PLTT;
@@ -1174,12 +1523,12 @@ static inline uint16_t getBgPD(int bgNumber)
 static void RenderRotScaleBGScanline(int bgNum, uint16_t control, uint16_t x, uint16_t y, int lineNum, uint16_t *line)
 {
     vBgCnt *bgcnt = (vBgCnt *)&control;
-    unsigned int charBaseBlock = bgcnt->charBaseBlock;
-    unsigned int screenBaseBlock = bgcnt->screenBaseBlock;
+    unsigned int charBaseBlock = (control >> 2) & 3;
+    unsigned int screenBaseBlock = (control >> 8) & 0x1F;;
     unsigned int mapWidth = 1 << (4 + (bgcnt->screenSize)); // number of tiles
 
-    uint8_t *bgtiles = (uint8_t *)(VRAM_ + charBaseBlock * 0x4000);
-    uint8_t *bgmap = (uint8_t *)(VRAM_ + screenBaseBlock * 0x800);
+    uint8_t *bgtiles = (uint8_t *)BG_CHAR_ADDR(charBaseBlock);;
+    uint8_t *bgmap = (uint8_t *)BG_SCREEN_ADDR(screenBaseBlock);
     uint16_t *pal = (uint16_t *)PLTT;
 
     if (control & BGCNT_MOSAIC)
@@ -1230,8 +1579,8 @@ static void RenderRotScaleBGScanline(int bgNum, uint16_t control, uint16_t x, ui
     s32 currentX = getBgX(bgNum);
     s32 currentY = getBgY(bgNum);
     //sign extend 28 bit number
-    currentX = ((currentX & (1 << 27)) ? currentX | 0xF0000000 : currentX);
-    currentY = ((currentY & (1 << 27)) ? currentY | 0xF0000000 : currentY);
+    //currentX = ((currentX & (1 << 27)) ? currentX | 0xF0000000 : currentX);
+    //currentY = ((currentY & (1 << 27)) ? currentY | 0xF0000000 : currentY);
 
     currentX += lineNum * pb;
     currentY += lineNum * pd;
@@ -1433,7 +1782,7 @@ static void DrawSprites(struct scanlineData* scanline, uint16_t vcount, bool win
     int i;
     unsigned int x;
     unsigned int y;
-    void *objtiles = VRAM_ + 0x10000;
+    void *objtiles = OBJ_VRAM0;
     unsigned int blendMode = (REG_BLDCNT >> 6) & 3;
     bool winShouldBlendPixel = true;
 
@@ -1685,6 +2034,11 @@ static void DrawScanline(uint16_t *pixels, uint16_t vcount)
                 uint16_t bghoffs = *(uint16_t *)(REG_ADDR_BG0HOFS + bgnum * 4);
                 uint16_t bgvoffs = *(uint16_t *)(REG_ADDR_BG0VOFS + bgnum * 4);
                 
+                if (vcount == 100)
+                {
+                    //printf("bg%u:\n bghoffs = %u\nbgvoffs = %u\n\n", bgnum, bghoffs, bgvoffs);
+                }
+                
                 RenderBGScanline(bgnum, scanline.bgcnts[bgnum], bghoffs, bgvoffs, vcount, scanline.layers[bgnum]);
             }
         }
@@ -1929,8 +2283,15 @@ void VDraw(SDL_Texture *texture)
 
     memset(image, 0, sizeof(image));
     DrawFrame(image);
-    SDL_UpdateTexture(texture, NULL, image, DISPLAY_WIDTH * sizeof (Uint16));
+    #ifdef useDraw
+    if(SDL_UpdateTexture(texture, NULL, image, DISPLAY_WIDTH * sizeof (Uint16)) < 0);
+    {
+        //*(int*)0 = 1;
+    }
+    #endif
+    
     REG_VCOUNT = 161; // prep for being in VBlank period
+    //printf("vdraw intr test: %u\n", REG_VCOUNT);
 }
 
 int DoMain(void *data)

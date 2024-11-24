@@ -2163,6 +2163,7 @@ void ZeroBoxMonData(struct BoxPokemon *boxMon)
 void ZeroMonData(struct Pokemon *mon)
 {
     u32 arg;
+    
     ZeroBoxMonData(&mon->box);
     arg = 0;
     SetMonData(mon, MON_DATA_STATUS, &arg);
@@ -2236,10 +2237,10 @@ void CreateBoxMon(struct BoxPokemon *boxMon, u16 species, u8 level, u8 fixedIV, 
     }
     else // Player is the OT
     {
-        value = gSaveBlock2Ptr->playerTrainerId[0]
-              | (gSaveBlock2Ptr->playerTrainerId[1] << 8)
-              | (gSaveBlock2Ptr->playerTrainerId[2] << 16)
-              | (gSaveBlock2Ptr->playerTrainerId[3] << 24);
+        value = gSaveBlock2Ptr->playerTrainerId[3]
+              | (gSaveBlock2Ptr->playerTrainerId[2] << 8)
+              | (gSaveBlock2Ptr->playerTrainerId[1] << 16)
+              | (gSaveBlock2Ptr->playerTrainerId[0] << 24);
     }
 
     SetBoxMonData(boxMon, MON_DATA_OT_ID, &value);
@@ -2814,7 +2815,7 @@ static u16 CalculateBoxMonChecksum(struct BoxPokemon *boxMon)
 #define CALC_STAT(base, iv, ev, statIndex, field)               \
 {                                                               \
     u8 baseStat = gSpeciesInfo[species].base;                   \
-    s32 n = (((2 * baseStat + iv + ev / 4) * level) / 100) + 5; \
+    s16 n = (((2 * baseStat + iv + ev / 4) * level) / 100) + 5; \
     u8 nature = GetNature(mon);                                 \
     n = ModifyStatByNature(nature, n, statIndex);               \
     SetMonData(mon, field, &n);                                 \
@@ -2822,8 +2823,8 @@ static u16 CalculateBoxMonChecksum(struct BoxPokemon *boxMon)
 
 void CalculateMonStats(struct Pokemon *mon)
 {
-    s32 oldMaxHP = GetMonData(mon, MON_DATA_MAX_HP, NULL);
-    s32 currentHP = GetMonData(mon, MON_DATA_HP, NULL);
+    u16 oldMaxHP = GetMonData(mon, MON_DATA_MAX_HP, NULL);
+    u16 currentHP = GetMonData(mon, MON_DATA_HP, NULL);
     s32 hpIV = GetMonData(mon, MON_DATA_HP_IV, NULL);
     s32 hpEV = GetMonData(mon, MON_DATA_HP_EV, NULL);
     s32 attackIV = GetMonData(mon, MON_DATA_ATK_IV, NULL);
@@ -2837,8 +2838,10 @@ void CalculateMonStats(struct Pokemon *mon)
     s32 spDefenseIV = GetMonData(mon, MON_DATA_SPDEF_IV, NULL);
     s32 spDefenseEV = GetMonData(mon, MON_DATA_SPDEF_EV, NULL);
     u16 species = GetMonData(mon, MON_DATA_SPECIES, NULL);
-    s32 level = GetLevelFromMonExp(mon);
-    s32 newMaxHP;
+    u8 level = GetLevelFromMonExp(mon);
+    u16 newMaxHP;
+    
+    //printf("CalculateMonStats: gotten level %u\n", level);
 
     SetMonData(mon, MON_DATA_LEVEL, &level);
 
@@ -2907,9 +2910,13 @@ u8 GetLevelFromMonExp(struct Pokemon *mon)
     u16 species = GetMonData(mon, MON_DATA_SPECIES, NULL);
     u32 exp = GetMonData(mon, MON_DATA_EXP, NULL);
     s32 level = 1;
+    
+    //printf("GetLevelFromMonExp: species = %u\nexp = %u\ngExperience = %u\n", species, exp, gExperienceTables[gSpeciesInfo[species].growthRate][level]);
 
     while (level <= MAX_LEVEL && gExperienceTables[gSpeciesInfo[species].growthRate][level] <= exp)
         level++;
+    
+    //printf("returning level = %u\n", level);
 
     return level - 1;
 }
@@ -2986,6 +2993,7 @@ void GiveMonInitialMoveset(struct Pokemon *mon)
 void GiveBoxMonInitialMoveset(struct BoxPokemon *boxMon)
 {
     u16 species = GetBoxMonData(boxMon, MON_DATA_SPECIES, NULL);
+    //printf("GiveBoxMonInitialMoveset: species = %u\n", species);
     s32 level = GetLevelFromBoxMonExp(boxMon);
     s32 i;
 
@@ -3729,6 +3737,7 @@ u32 GetBoxMonData3(struct BoxPokemon *boxMon, s32 field, u8 *data)
 
         if (CalculateBoxMonChecksum(boxMon) != boxMon->checksum)
         {
+            //printf("GetBoxMonData3: bad mon checksum!\n");
             boxMon->isBadEgg = TRUE;
             boxMon->isEgg = TRUE;
             substruct3->isEgg = TRUE;
@@ -3816,6 +3825,7 @@ u32 GetBoxMonData3(struct BoxPokemon *boxMon, s32 field, u8 *data)
         retVal = boxMon->unknown;
         break;
     case MON_DATA_SPECIES:
+        //printf("GetBoxMonData3 MON_DATA_SPECIES: %u\n", boxMon->isBadEgg ? SPECIES_EGG : substruct0->species);
         retVal = boxMon->isBadEgg ? SPECIES_EGG : substruct0->species;
         break;
     case MON_DATA_HELD_ITEM:
@@ -4067,8 +4077,8 @@ u32 GetBoxMonData3(struct BoxPokemon *boxMon, s32 field, u8 *data)
 u32 GetBoxMonData2(struct BoxPokemon *boxMon, s32 field) __attribute__((alias("GetBoxMonData3")));
 
 #define SET8(lhs) (lhs) = *data
-#define SET16(lhs) (lhs) = data[0] + (data[1] << 8)
-#define SET32(lhs) (lhs) = data[0] + (data[1] << 8) + (data[2] << 16) + (data[3] << 24)
+#define SET16(lhs) (lhs) = data[1] + (data[0] << 8)
+#define SET32(lhs) (lhs) = data[3] + (data[2] << 8) + (data[1] << 16) + (data[0] << 24)
 
 void SetMonData(struct Pokemon *mon, s32 field, const void *dataArg)
 {
@@ -4081,9 +4091,11 @@ void SetMonData(struct Pokemon *mon, s32 field, const void *dataArg)
         break;
     case MON_DATA_LEVEL:
         SET8(mon->level);
+        //printf("SetMonData setting level: %u", mon->level);
         break;
     case MON_DATA_HP:
         SET16(mon->hp);
+        //printf("SetMonData setting HP: %u", mon->hp);
         break;
     case MON_DATA_MAX_HP:
         SET16(mon->maxHP);
@@ -4188,6 +4200,7 @@ void SetBoxMonData(struct BoxPokemon *boxMon, s32 field, const void *dataArg)
     case MON_DATA_SPECIES:
     {
         SET16(substruct0->species);
+        //printf("SetBoxMonData species set: %u\n", substruct0->species);
         if (substruct0->species)
             boxMon->hasSpecies = TRUE;
         else
@@ -4199,6 +4212,7 @@ void SetBoxMonData(struct BoxPokemon *boxMon, s32 field, const void *dataArg)
         break;
     case MON_DATA_EXP:
         SET32(substruct0->experience);
+        //printf("SetBoxMonData: experience set: %u\n", substruct0->experience);
         break;
     case MON_DATA_PP_BONUSES:
         SET8(substruct0->ppBonuses);
@@ -4365,7 +4379,7 @@ void SetBoxMonData(struct BoxPokemon *boxMon, s32 field, const void *dataArg)
         break;
     case MON_DATA_IVS:
     {
-        u32 ivs = data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24);
+        u32 ivs = data[3] | (data[2] << 8) | (data[1] << 16) | (data[0] << 24);
         substruct3->hpIV = ivs & MAX_IV_MASK;
         substruct3->attackIV = (ivs >> 5) & MAX_IV_MASK;
         substruct3->defenseIV = (ivs >> 10) & MAX_IV_MASK;
@@ -6561,10 +6575,10 @@ bool8 IsTradedMon(struct Pokemon *mon)
 bool8 IsOtherTrainer(u32 otId, u8 *otName)
 {
     if (otId ==
-        (gSaveBlock2Ptr->playerTrainerId[0]
-      | (gSaveBlock2Ptr->playerTrainerId[1] << 8)
-      | (gSaveBlock2Ptr->playerTrainerId[2] << 16)
-      | (gSaveBlock2Ptr->playerTrainerId[3] << 24)))
+        (gSaveBlock2Ptr->playerTrainerId[3]
+      | (gSaveBlock2Ptr->playerTrainerId[2] << 8)
+      | (gSaveBlock2Ptr->playerTrainerId[1] << 16)
+      | (gSaveBlock2Ptr->playerTrainerId[0] << 24)))
     {
         int i;
         for (i = 0; otName[i] != EOS; i++)

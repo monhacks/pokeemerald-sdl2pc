@@ -1,4 +1,5 @@
 *.exe
+*.dol
 *.o
 *.i
 *.elf
@@ -25,7 +26,7 @@ tools/agbcc
 *.dump
 *.sa*
 Thumbs.db
-build/
+a/
 .DS_Store
 *.ddump
 .idea/

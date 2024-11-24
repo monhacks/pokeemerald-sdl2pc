@@ -111,6 +111,8 @@ bool8 RunScriptCommand(struct ScriptContext *ctx)
             }
 
             cmdCode = *(ctx->scriptPtr);
+            //printf("script ptr runtime = %x\n", ctx->scriptPtr);
+            //for (;;) {}
             ctx->scriptPtr++;
             func = &ctx->cmdTable[cmdCode];
 
@@ -169,17 +171,17 @@ void ScriptReturn(struct ScriptContext *ctx)
 
 u16 ScriptReadHalfword(struct ScriptContext *ctx)
 {
-    u16 value = *(ctx->scriptPtr++);
-    value |= *(ctx->scriptPtr++) << 8;
+    u16 value = *(ctx->scriptPtr++) << 8;
+    value |= *(ctx->scriptPtr++);
     return value;
 }
 
 u32 ScriptReadWord(struct ScriptContext *ctx)
 {
-    u32 value0 = *(ctx->scriptPtr++);
-    u32 value1 = *(ctx->scriptPtr++);
-    u32 value2 = *(ctx->scriptPtr++);
     u32 value3 = *(ctx->scriptPtr++);
+    u32 value2 = *(ctx->scriptPtr++);
+    u32 value1 = *(ctx->scriptPtr++);
+    u32 value0 = *(ctx->scriptPtr++);
     return (((((value3 << 8) + value2) << 8) + value1) << 8) + value0;
 }
 
@@ -268,6 +270,7 @@ void ScriptContext_Enable(void)
 // scripts (except the frame table scripts).
 void RunScriptImmediately(const u8 *ptr)
 {
+    //printf("script ptr = %x\n", ptr);
     InitScriptContext(&sImmediateScriptContext, gScriptCmdTable, gScriptCmdTableEnd);
     SetupBytecodeScript(&sImmediateScriptContext, ptr);
     while (RunScriptCommand(&sImmediateScriptContext) == TRUE);

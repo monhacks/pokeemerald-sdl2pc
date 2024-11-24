@@ -144,7 +144,7 @@ void ReadFlash_Core(vu8 *src, u8 *dest, u32 size)
 void ReadFlash(u16 sectorNum, u32 offset, u8 *dest, u32 size)
 {
 #ifdef PORTABLE
-    printf("ReadFlash(sectorNum=0x%04X,offset=0x%08X,size=0x%02X)\n",sectorNum,offset,size);
+    //printf("ReadFlash(sectorNum=0x%04X,offset=0x%08X,size=0x%02X)\n",sectorNum,offset,size);
     FILE * savefile = fopen("pokeemerald.sav", "r+b");
     if (savefile == NULL)
     {

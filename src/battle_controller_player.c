@@ -1247,6 +1247,8 @@ static void Task_GiveExpWithExpBar(u8 taskId)
             if (currExp + gainedExp >= expOnNextLvl)
             {
                 u8 savedActiveBattler;
+                
+                //printf("TASK MAIN: currExp %u, gainedExp %u\n", expOnNextLvl);
 
                 SetMonData(&gPlayerParty[monId], MON_DATA_EXP, &expOnNextLvl);
                 CalculateMonStats(&gPlayerParty[monId]);
@@ -1259,6 +1261,7 @@ static void Task_GiveExpWithExpBar(u8 taskId)
             }
             else
             {
+                //printf("TASK ELSE: currExp %u, gainedExp %u\n", currExp, gainedExp);
                 currExp += gainedExp;
                 SetMonData(&gPlayerParty[monId], MON_DATA_EXP, &currExp);
                 gBattlerControllerFuncs[battlerId] = CompleteOnInactiveTextPrinter;

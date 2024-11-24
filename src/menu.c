@@ -1791,6 +1791,7 @@ void *DecompressAndCopyTileDataToVram(u8 bgId, const void *src, u32 size, u16 of
             size = sizeOut;
         if (ptr)
         {
+            //printf("copying!\n");
             copy_decompressed_tile_data_to_vram(bgId, ptr, size, offset, mode);
             sTempTileDataBuffer[sTempTileDataBufferIdx++] = ptr;
         }
@@ -1828,10 +1829,13 @@ void *malloc_and_decompress(const void *src, u32 *size)
     u8 *sizeAsBytes = (u8 *)size;
     u8 *srcAsBytes = (u8 *)src;
 
-    sizeAsBytes[0] = srcAsBytes[1];
-    sizeAsBytes[1] = srcAsBytes[2];
-    sizeAsBytes[2] = srcAsBytes[3];
-    sizeAsBytes[3] = 0;
+    sizeAsBytes[0] = 0;
+    sizeAsBytes[1] = srcAsBytes[0];
+    sizeAsBytes[2] = srcAsBytes[1];
+    sizeAsBytes[3] = srcAsBytes[2];
+
+    
+    //printf("attempted size = %u\n", *size);
 
     ptr = Alloc(*size);
     if (ptr)

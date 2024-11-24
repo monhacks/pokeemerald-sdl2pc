@@ -70,7 +70,7 @@ void SetGpuReg(u8 regOffset, u16 value)
         u16 vcount;
 
         GPU_REG_BUF(regOffset) = value;
-        vcount = REG_VCOUNT & 0xFF;
+        vcount = REG_VCOUNT >> 8;
 
         if ((vcount >= 161 && vcount <= 225) || (REG_DISPCNT & DISPCNT_FORCED_BLANK))
         {

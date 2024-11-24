@@ -25,6 +25,7 @@
 #include "title_screen.h"
 #include "constants/rgb.h"
 #include "constants/battle_anim.h"
+#include "overworld.h"
 
 /*
     The intro is grouped into the following scenes
@@ -1047,6 +1048,7 @@ static void MainCB2_Intro(void)
 
 static void MainCB2_EndIntro(void)
 {
+    //printf("end intro!\n");
     if (!UpdatePaletteFade())
         SetMainCallback2(CB2_InitTitleScreen);
 }
@@ -1111,7 +1113,11 @@ static u8 SetUpCopyrightScreen(void)
         break;
     case 141:
         if (UpdatePaletteFade())
+        {
+            //printf("pal pending!\n");
             break;
+        }
+        //printf("updatepal complete!\n");
         CreateTask(Task_Scene1_Load, 0);
         SetMainCallback2(MainCB2_Intro);
         if (gMultibootProgramStruct.gcmb_field_2 != 0)
@@ -1140,6 +1146,8 @@ static u8 SetUpCopyrightScreen(void)
     return 1;
 }
 
+unsigned char debugPlrName = {0xD1, 0xDD, 0xDD, 0xFF};
+
 void CB2_InitCopyrightScreenAfterBootup(void)
 {
     if (!SetUpCopyrightScreen())
@@ -1152,7 +1160,16 @@ void CB2_InitCopyrightScreenAfterBootup(void)
             Sav2_ClearSetDefault();
         SetPokemonCryStereo(gSaveBlock2Ptr->optionsSound);
         InitHeap(gHeap, HEAP_SIZE);
+        //printf("copyright finished!\n");
     }
+    /*gSaveBlock2Ptr->playerGender = MALE;
+    gSaveBlock2Ptr->playerName[0] = 0xD1;
+    gSaveBlock2Ptr->playerName[1] = 0xDD;
+    gSaveBlock2Ptr->playerName[2] = 0xDD;
+    gSaveBlock2Ptr->playerName[3] = 0xFF;
+    
+    SetMainCallback2(CB2_NewGame);
+    return;*/
 }
 
 void CB2_InitCopyrightScreenAfterTitleScreen(void)
@@ -1204,6 +1221,7 @@ static void Task_Scene1_Load(u8 taskId)
 
 static void Task_Scene1_FadeIn(u8 taskId)
 {
+    //printf("Task_Scene1_FadeIn");
     BeginNormalPaletteFade(PALETTES_ALL, 0, 16, 0, RGB_BLACK);
     SetVBlankCallback(VBlankCB_Intro);
     SetGpuReg(REG_OFFSET_DISPCNT, DISPCNT_MODE_0 | DISPCNT_OBJ_1D_MAP | DISPCNT_BG_ALL_ON | DISPCNT_OBJ_ON);
@@ -1223,6 +1241,7 @@ static void Task_Scene1_FadeIn(u8 taskId)
 
 static void Task_Scene1_WaterDrops(u8 taskId)
 {
+    //printf("Task_Scene1_WaterDrops");
     if (gIntroFrameCounter == TIMER_BIG_DROP_START)
         gSprites[gTasks[taskId].sBigDropSpriteId].sState = 1;
 
@@ -1301,6 +1320,7 @@ static void SpriteCB_Sparkle(struct Sprite *sprite)
 
 static void Task_Scene1_PanUp(u8 taskId)
 {
+    //printf("Task_Scene1_PanUp");
     if (gIntroFrameCounter < TIMER_END_PAN_UP)
     {
         s32 offset;

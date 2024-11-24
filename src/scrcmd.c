@@ -93,6 +93,8 @@ static u8 * const sScriptStringVars[] =
 
 bool8 ScrCmd_nop(struct ScriptContext *ctx)
 {
+    //printf("NOP encountered, HALT");
+    //for (;;) {}
     return FALSE;
 }
 

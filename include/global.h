@@ -5,7 +5,7 @@
 #include <string.h>
 #include <limits.h>
 
-#ifndef NO_UNDERSCORE_HACK
+/*#ifndef NO_UNDERSCORE_HACK
 #define REG_BASE       _REG_BASE
 #define VRAM_          _VRAM_
 #define OAM            _OAM
@@ -53,7 +53,7 @@
 #define Platform_GetTime _Platform_GetTime
 #define Platform_SetTime _Platform_SetTime
 #define Platform_SetAlarm _Platform_SetAlarm
-#endif
+#endif*/
 
 #include "config.h" // we need to define config before gba headers as print stuff needs the functions nulled before defines.
 #include "gba/gba.h"
@@ -168,14 +168,14 @@ int strcmp(const char *, const char*);
 // programming projects had more than 1 "programming team" which utilized different macros for
 // each of the files that were worked on.
 #define T1_READ_8(ptr)  ((ptr)[0])
-#define T1_READ_16(ptr) ((ptr)[0] | ((ptr)[1] << 8))
-#define T1_READ_32(ptr) ((ptr)[0] | ((ptr)[1] << 8) | ((ptr)[2] << 16) | ((ptr)[3] << 24))
+#define T1_READ_16(ptr) ((ptr)[1] | ((ptr)[0] << 8))
+#define T1_READ_32(ptr) ((ptr)[3] | ((ptr)[2] << 8) | ((ptr)[1] << 16) | ((ptr)[0] << 24))
 #define T1_READ_PTR(ptr) (u8 *) T1_READ_32(ptr)
 
 // T2_READ_8 is a duplicate to remain consistent with each group.
 #define T2_READ_8(ptr)  ((ptr)[0])
-#define T2_READ_16(ptr) ((ptr)[0] + ((ptr)[1] << 8))
-#define T2_READ_32(ptr) ((ptr)[0] + ((ptr)[1] << 8) + ((ptr)[2] << 16) + ((ptr)[3] << 24))
+#define T2_READ_16(ptr) ((ptr)[1] + ((ptr)[0] << 8))
+#define T2_READ_32(ptr) ((ptr)[3] + ((ptr)[2] << 8) + ((ptr)[1] << 16) + ((ptr)[0] << 24))
 #define T2_READ_PTR(ptr) (void *) T2_READ_32(ptr)
 
 // Macros for checking the joypad

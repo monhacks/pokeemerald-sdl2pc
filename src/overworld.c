@@ -546,6 +546,7 @@ const struct MapLayout *GetMapLayout(void)
 void ApplyCurrentWarp(void)
 {
     gLastUsedWarp = gSaveBlock1Ptr->location;
+    //printf("ApplyCurrentWarp: warp destination get: group %u, mapnum %u\n", sWarpDestination.mapGroup, sWarpDestination.mapNum);
     gSaveBlock1Ptr->location = sWarpDestination;
     sFixedDiveWarp = sDummyWarpData;
     sFixedHoleWarp = sDummyWarpData;
@@ -594,10 +595,13 @@ struct MapHeader const *const GetDestinationWarpMapHeader(void)
 
 static void LoadCurrentMapData(void)
 {
+    //printf("warp destination get: group %u, mapnum %u\n", gSaveBlock1Ptr->location.mapGroup, gSaveBlock1Ptr->location.mapNum);
     sLastMapSectionId = gMapHeader.regionMapSectionId;
     gMapHeader = *Overworld_GetMapHeaderByGroupAndId(gSaveBlock1Ptr->location.mapGroup, gSaveBlock1Ptr->location.mapNum);
     gSaveBlock1Ptr->mapLayoutId = gMapHeader.mapLayoutId;
     gMapHeader.mapLayout = GetMapLayout();
+    //printf("address of gmapheader map.bin = %x", gMapHeader.mapLayout);
+    //for (;;) {}
 }
 
 static void LoadSaveblockMapHeader(void)
@@ -638,6 +642,7 @@ void WarpIntoMap(void)
 
 void SetWarpDestination(s8 mapGroup, s8 mapNum, s8 warpId, s8 x, s8 y)
 {
+    //printf("warp destination set: group %u, mapnum %u\n", mapGroup, mapNum);
     SetWarpData(&sWarpDestination, mapGroup, mapNum, warpId, x, y);
 }
 
